@@ -1,10 +1,12 @@
 #include <bench/ending_bench.hpp>
 #include <kernel/timers.hpp>
+#include <arch/x86/msr.hpp>
 #include <stdint.h>
 #include <cstddef>
 #include <chrono>
 #include <sys/types.h>
 
+/* Right now this only works on x86_64 */
 namespace ending_bench {
     static constexpr size_t MAX_ENTRIES = 300000;
     static uint64_t entries[MAX_ENTRIES];
@@ -17,10 +19,10 @@ namespace ending_bench {
 
         // Set up a periodic timer to poll the RAPL register every millisecond
         /* 1 ms */
-        Timers::periodic(std::chrono::milliseconds(duration_ms), [](Timers::id_t) {
+        Timers::periodic(std::chrono::milliseconds(1), [](Timers::id_t id) {
             if (bench_started && entry_count < MAX_ENTRIES) {
-                // Replace with actual RAPL register read
-                uint64_t rapl_value = read_rapl_register();
+                // Read RAPL package energy status register
+                uint64_t rapl_value = x86::msr::read_msr(x86::msr::MSR_PKG_ENERGY_STATUS);
                 entries[entry_count++] = rapl_value;
             }
             });
@@ -30,10 +32,6 @@ namespace ending_bench {
         if (!bench_started) {
             *table = nullptr;
             return 0;
-        }
-        // Simulate recording some entries for demonstration
-        for (size_t i = 0; i < MAX_ENTRIES; ++i) {
-            entries[i] = i * 100; // Example data
         }
         entry_count = MAX_ENTRIES;
         *table = entries;
