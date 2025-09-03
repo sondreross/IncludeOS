@@ -1,0 +1,7 @@
+#pragma once
+#ifndef API_ENDING_BENCH_HPP
+#define API_ENDING_BENCH_HPP
+
+#include "bench/ending_bench.hpp"
+
+#endif // API_ENDING_BENCH_HPP
