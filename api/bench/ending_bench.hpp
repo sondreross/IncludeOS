@@ -7,7 +7,7 @@
 #include <cstdint>
 
 namespace ending_bench {
-    void start_bench();
+    void start_bench(uint64_t duration_ms);
 
     /* Returns how many entries were recorded and sets the address pointed to by table
        to the address of the first recorded entry */

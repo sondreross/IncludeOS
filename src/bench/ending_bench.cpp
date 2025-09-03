@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <cstddef>
 #include <chrono>
+#include <sys/types.h>
 
 namespace ending_bench {
     static constexpr size_t MAX_ENTRIES = 300000;
@@ -10,13 +11,13 @@ namespace ending_bench {
     static size_t entry_count = 0;
     static bool bench_started = false;
 
-    void start_bench() {
+    void start_bench(uint64_t duration_ms) {
         entry_count = 0;
         bench_started = true;
 
         // Set up a periodic timer to poll the RAPL register every millisecond
         /* 1 ms */
-        Timers::periodic(std::chrono::milliseconds(1), [](Timers::id_t) {
+        Timers::periodic(std::chrono::milliseconds(duration_ms), [](Timers::id_t) {
             if (bench_started && entry_count < MAX_ENTRIES) {
                 // Replace with actual RAPL register read
                 uint64_t rapl_value = read_rapl_register();
