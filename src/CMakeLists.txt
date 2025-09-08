@@ -30,6 +30,7 @@ set(LIBRARIES
     posix
     virtio
     hw
+    bench
 )
 
 if (NOT CMAKE_TESTING_ENABLED)
