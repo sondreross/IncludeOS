@@ -20,20 +20,20 @@ namespace ending_bench {
         // Set up a periodic timer to poll the RAPL register every millisecond
         /* 1 ms */
         Timers::periodic(std::chrono::milliseconds(1), [](Timers::id_t id) {
-            if (bench_started && entry_count < MAX_ENTRIES) {
-                // Read RAPL package energy status register
-                uint64_t rapl_value = x86::msr::read_msr(x86::msr::MSR_PKG_ENERGY_STATUS);
-                entries[entry_count++] = rapl_value;
-            }
+//            if (bench_started && entry_count < MAX_ENTRIES) {
+//                // Read RAPL package energy status register
+//                uint64_t rapl_value = x86::msr::read_msr(x86::msr::MSR_PKG_ENERGY_STATUS);
+//                entries[entry_count++] = rapl_value;
+//            }
+              entry_count++;
             });
-        }
+    }
 
     uint64_t end_bench(uint64_t **table) {
         if (!bench_started) {
             *table = nullptr;
             return 0;
         }
-        entry_count = MAX_ENTRIES;
         *table = entries;
         bench_started = false;
         return entry_count;
