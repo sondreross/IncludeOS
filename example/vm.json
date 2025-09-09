@@ -1,0 +1,5 @@
+{
+  "image" : "service.img",
+  "smp" : 4,
+  "mem" : 128
+}
