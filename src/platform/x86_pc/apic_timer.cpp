@@ -64,12 +64,15 @@ namespace x86
   }
   void APIC_Timer::calibrate()
   {
+    printf("APIC_Timer::calibrate() starting on CPU %d\n", SMP::cpu_id());
     init();
 
     if (ticks_per_micro != 0) {
+      printf("APIC_Timer::calibrate() - ticks_per_micro already set: %u\n", ticks_per_micro);
       start_timers();
       // with SMP, signal everyone else too (IRQ 1)
       if (SMP::cpu_count() > 1) {
+        printf("APIC_Timer::calibrate() - broadcasting IPI to %u CPUs\n", SMP::cpu_count() - 1);
         APIC::get().bcast_ipi(0x21);
       }
       return;
@@ -77,6 +80,7 @@ namespace x86
 
     // start timer (unmask)
     INFO("APIC", "Measuring APIC timer...");
+    printf("APIC_Timer::calibrate() - starting PIT measurement\n");
 
     auto& lapic = APIC::get();
     // See: Vol3a 10.5.4.1 TSC-Deadline Mode
@@ -94,22 +98,27 @@ namespace x86
     /// use PIT to measure <time> in one-shot ///
     PIT::oneshot(milliseconds(CALIBRATION_MS),
     [overhead] {
+      printf("APIC_Timer::calibrate() - PIT callback executed\n");
       uint32_t diff = APIC::get().timer_diff() - overhead;
       assert(ticks_per_micro == 0);
       // measure difference
       ticks_per_micro = diff / CALIBRATION_MS / 1000;
+      printf("APIC_Timer::calibrate() - calculated ticks_per_micro: %u\n", ticks_per_micro);
       // stop APIC timer
       APIC::get().timer_interrupt(false);
 
-      //printf("* APIC timer: ticks %ums: %u\t 1mi: %u\n",
-      //       CALIBRATION_MS, diff, ticks_per_micro);
+      printf("APIC_Timer::calibrate() - calling start_timers()\n");
       start_timers();
 
       // with SMP, signal everyone else too (IRQ 1)
       if (SMP::cpu_count() > 1) {
+        printf("APIC_Timer::calibrate() - broadcasting IPI to %u CPUs\n", SMP::cpu_count() - 1);
         APIC::get().bcast_ipi(0x21);
       }
+      printf("APIC_Timer::calibrate() - PIT callback finished\n");
     });
+    printf("APIC_Timer::calibrate() - PIT oneshot set up, waiting for callback\n");
+
   }
 
   void APIC_Timer::start_timers() noexcept

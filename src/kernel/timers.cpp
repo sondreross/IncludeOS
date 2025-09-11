@@ -124,7 +124,11 @@ bool Timers::is_ready()
 }
 void Timers::ready()
 {
+
+  printf("Timers::ready() called on CPU %d, signal_ready was %d\n", 
+         SMP::cpu_id(), signal_ready ? 1 : 0);
   signal_ready = true;
+  printf("Timers::ready() set signal_ready to true on CPU %d\n", SMP::cpu_id());
   // begin processing timers if any are queued
   if (get().is_running == false) {
     timers_handler();

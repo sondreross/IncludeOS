@@ -29,8 +29,8 @@ namespace ending_bench {
                 }
             });
             printf("Timer created with ID %d on CPU %d\n", timer_id, SMP::cpu_id());
-        }, nullptr, SMP::cpu_count() - 1);
-        SMP::signal(SMP::cpu_count() - 1);
+        }, nullptr, 0);
+        SMP::signal(0);
     }
 
     void start_bench(uint64_t duration_ms) {
