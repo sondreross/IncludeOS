@@ -30,6 +30,12 @@
 #define IA32_GS_BASE            0xC0000101
 #define IA32_KERNEL_GS_BASE     0xC0000102
 
+#define MSR_RAPL_POWER_UNIT      0x606
+#define MSR_PKG_ENERGY_STATUS    0x611
+#define MSR_PKG_POWER_INFO       0x614
+#define MSR_DRAM_ENERGY_STATUS   0x619
+#define MSR_DRAM_POWER_INFO      0x61C
+
 namespace x86
 {
 
@@ -95,3 +101,7 @@ namespace x86
 }
 
 #endif
+
+
+
+
