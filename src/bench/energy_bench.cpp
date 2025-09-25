@@ -2,14 +2,13 @@
 #include <delegate>
 #include <arch/x86/cpu.hpp>
 #include <cstdint>
-#include <iostream>
 
-#include <bench/energy_bench_function.hpp>
+#include <bench/energy_bench.hpp>
 
 namespace energy_bench {
 
 double get_rapl_units() {
-    uint64_t power_unit_msr = read_msr(MSR_RAPL_POWER_UNIT);
+    uint64_t power_unit_msr = x86::CPU::read_msr(MSR_RAPL_POWER_UNIT);
     uint8_t energy_unit_bits = (power_unit_msr >> 8) & 0x1F;  // Bits 12:8
     
     // Energy unit: 1/2^ESU joules per count

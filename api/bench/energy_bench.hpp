@@ -36,9 +36,6 @@ namespace energy_bench {
             return (pkg_microjoules + dram_microjoules + pp0_microjoules + pp1_microjoules) / 1'000'000.0; 
         }
         
-        bool has_domain(rapl_flags domain) const { 
-            return (measured_domains & domain) != 0; 
-        }
     };
     
     // Default: measure PKG and DRAM
