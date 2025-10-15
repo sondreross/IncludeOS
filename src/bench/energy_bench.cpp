@@ -7,6 +7,29 @@
 
 namespace energy_bench {
 
+static inline uint64_t rdtsc_start() {
+    uint32_t lo, hi;
+    asm volatile (
+        "cpuid\n\t"
+        "rdtsc\n\t"
+        : "=a"(lo), "=d"(hi)
+        :: "%rbx", "%rcx"
+    );
+    return ((uint64_t)hi << 32) | lo;
+}
+
+static inline uint64_t rdtsc_end() {
+    uint32_t lo, hi;
+    asm volatile (
+        "rdtsc\n\t"
+        "lfence\n\t"
+        : "=a"(lo), "=d"(hi)
+        :
+        : "memory"
+    );
+    return ((uint64_t)hi << 32) | lo;
+}
+
 double get_rapl_units() {
     uint64_t power_unit_msr = x86::CPU::read_msr(MSR_RAPL_POWER_UNIT);
     uint8_t energy_unit_bits = (power_unit_msr >> 8) & 0x1F;  // Bits 12:8
@@ -59,7 +82,16 @@ energy_result bench_function(delegate<void()> func, uint32_t domains)
         result.measured_domains |= PP1;
     }
     
+    // Capture start time (CPU cycles) using serialized RDTSC
+    volatile uint64_t start_cycles = rdtsc_start();
+    result.cycles_start = start_cycles;
+    
     func();
+    
+    // Capture end time (CPU cycles) using serialized RDTSCP
+    volatile uint64_t end_cycles = rdtsc_end();
+    result.cycles_end = end_cycles;
+    result.cycles_elapsed = result.cycles_end - result.cycles_start;
     
     // Calculate differences and convert to microjoules
     if (domains & PKG) {

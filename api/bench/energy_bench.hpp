@@ -26,6 +26,11 @@ namespace energy_bench {
         uint64_t pp1_microjoules = 0;
         uint32_t measured_domains = 0;  // Which domains were actually measured
         
+        // Timing information
+        uint64_t cycles_start = 0;      // CPU cycles at start
+        uint64_t cycles_end = 0;        // CPU cycles at end
+        uint64_t cycles_elapsed = 0;    // Total cycles elapsed
+        
         // Convenience methods
         double pkg_joules() const { return pkg_microjoules / 1'000'000.0; }
         double dram_joules() const { return dram_microjoules / 1'000'000.0; }
@@ -36,13 +41,15 @@ namespace energy_bench {
             return (pkg_microjoules + dram_microjoules + pp0_microjoules + pp1_microjoules) / 1'000'000.0; 
         }
         
+        // Time in nanoseconds (requires CPU frequency in MHz)
+        double time_ns(uint64_t cpu_mhz) const {
+            return (cycles_elapsed * 1000.0) / cpu_mhz;
+        }
+        
     };
     
     // Default: measure PKG and DRAM
     energy_result bench_function(delegate<void()> func, uint32_t domains = PKG);
-    
-    // Legacy single-value version (returns PKG energy only)
-    uint64_t bench_function_single(delegate<void()> func);
 }
 
 #endif // ENERGY_BENCH_HPP
