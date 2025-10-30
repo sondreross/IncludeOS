@@ -1,6 +1,7 @@
 #include <os>
 #include <delegate>
 #include <arch/x86/cpu.hpp>
+#include <kernel/rtc.hpp>
 #include <cstdint>
 
 #include <bench/energy_bench.hpp>
@@ -21,11 +22,12 @@ static inline uint64_t rdtsc_start() {
 static inline uint64_t rdtsc_end() {
     uint32_t lo, hi;
     asm volatile (
-        "rdtsc\n\t"
-        "lfence\n\t"
-        : "=a"(lo), "=d"(hi)
-        :
-        : "memory"
+        "rdtscp\n\t"
+        "mov %%edx, %0\n\t"
+        "mov %%eax, %1\n\t"
+        "cpuid\n\t"
+        : "=r"(hi), "=r"(lo)
+        :: "%rax", "%rbx", "%rcx", "%rdx"
     );
     return ((uint64_t)hi << 32) | lo;
 }
@@ -83,15 +85,19 @@ energy_result bench_function(delegate<void()> func, uint32_t domains)
     }
     
     // Capture start time (CPU cycles) using serialized RDTSC
+    uint64_t start_ns = RTC::rdtsc_ns();
     volatile uint64_t start_cycles = rdtsc_start();
-    result.cycles_start = start_cycles;
     
     func();
     
     // Capture end time (CPU cycles) using serialized RDTSCP
     volatile uint64_t end_cycles = rdtsc_end();
+    uint64_t end_ns = RTC::rdtsc_ns();
+    
+    result.cycles_start = start_cycles;
     result.cycles_end = end_cycles;
     result.cycles_elapsed = result.cycles_end - result.cycles_start;
+    result.nanos_elapsed = end_ns - start_ns;
     
     // Calculate differences and convert to microjoules
     if (domains & PKG) {

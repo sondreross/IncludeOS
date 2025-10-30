@@ -30,6 +30,7 @@ namespace energy_bench {
         uint64_t cycles_start = 0;      // CPU cycles at start
         uint64_t cycles_end = 0;        // CPU cycles at end
         uint64_t cycles_elapsed = 0;    // Total cycles elapsed
+        uint64_t nanos_elapsed = 0;     // Total nanoseconds elapsed
         
         // Convenience methods
         double pkg_joules() const { return pkg_microjoules / 1'000'000.0; }
