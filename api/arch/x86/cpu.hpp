@@ -22,21 +22,25 @@
 #include <cstdint>
 #include <arch.hpp>
 
-#define IA32_EFER               0xC0000080
-#define IA32_STAR               0xC0000081
-#define IA32_LSTAR              0xc0000082
-#define IA32_FMASK              0xc0000084
-#define IA32_FS_BASE            0xC0000100
-#define IA32_GS_BASE            0xC0000101
-#define IA32_KERNEL_GS_BASE     0xC0000102
+#define IA32_EFER                 0xC0000080
+#define IA32_STAR                 0xC0000081
+#define IA32_LSTAR                0xc0000082
+#define IA32_FMASK                0xc0000084
+#define IA32_FS_BASE              0xC0000100
+#define IA32_GS_BASE              0xC0000101
+#define IA32_KERNEL_GS_BASE       0xC0000102
 
-#define MSR_RAPL_POWER_UNIT      0x606
-#define MSR_PKG_ENERGY_STATUS    0x611
-#define MSR_PKG_POWER_INFO       0x614
-#define MSR_DRAM_ENERGY_STATUS   0x619
-#define MSR_DRAM_POWER_INFO      0x61C
-#define MSR_PP0_ENERGY_STATUS    0x639
-#define MSR_PP1_ENERGY_STATUS    0x641
+#define IA32_PACKAGE_THERM_STATUS 0x1B1
+#define IA32_THERM_STATUS         0x19C
+#define MSR_TEMPERATURE_TARGET    0x1A2
+
+#define MSR_RAPL_POWER_UNIT       0x606
+#define MSR_PKG_ENERGY_STATUS     0x611
+#define MSR_PKG_POWER_INFO        0x614
+#define MSR_DRAM_ENERGY_STATUS    0x619
+#define MSR_DRAM_POWER_INFO       0x61C
+#define MSR_PP0_ENERGY_STATUS     0x639
+#define MSR_PP1_ENERGY_STATUS     0x641
 
 namespace x86
 {

@@ -59,14 +59,20 @@ uint64_t bench_function_single(delegate<void()> func)
     return energy_microjoules;
 }
 
-energy_result bench_function(delegate<void()> func, uint32_t domains) 
+energy_result bench_function(void (*func)(), uint32_t domains) 
 {
     double energy_unit = get_rapl_units();
     energy_result result;
     
     // Store raw "before" values
     uint64_t pkg_before = 0, dram_before = 0, pp0_before = 0, pp1_before = 0;
-    
+
+    // Read IA32_TEMPERATURE_TARGET (MSR 0x1A2) — bits 23:16 contain TjMax (temperature target)
+    uint64_t temp_target_msr = x86::CPU::read_msr(0x1A2);
+    uint8_t therm_max = static_cast<uint8_t>((temp_target_msr >> 16) & 0xFF);
+    uint32_t therm_start = static_cast<uint32_t>((x86::CPU::read_msr(0x19C) >> 16) & 0x7F); // IA32_THERM_STATUS bits 22:16
+    uint32_t pkg_therm_start = static_cast<uint32_t>((x86::CPU::read_msr(0x1B1) >> 16) & 0x7F); // IA32_PACKAGE_THERM_STATUS bits 22:16
+    uint64_t start_ns = RTC::nanos_now();
     if (domains & PKG) {
         pkg_before = x86::CPU::read_msr(MSR_PKG_ENERGY_STATUS);
         result.measured_domains |= PKG;
@@ -85,19 +91,13 @@ energy_result bench_function(delegate<void()> func, uint32_t domains)
     }
     
     // Capture start time (CPU cycles) using serialized RDTSC
-    uint64_t start_ns = RTC::rdtsc_ns();
     volatile uint64_t start_cycles = rdtsc_start();
     
     func();
     
     // Capture end time (CPU cycles) using serialized RDTSCP
     volatile uint64_t end_cycles = rdtsc_end();
-    uint64_t end_ns = RTC::rdtsc_ns();
     
-    result.cycles_start = start_cycles;
-    result.cycles_end = end_cycles;
-    result.cycles_elapsed = result.cycles_end - result.cycles_start;
-    result.nanos_elapsed = end_ns - start_ns;
     
     // Calculate differences and convert to microjoules
     if (domains & PKG) {
@@ -120,6 +120,20 @@ energy_result bench_function(delegate<void()> func, uint32_t domains)
         uint64_t raw_diff = pp1_after - pp1_before;
         result.pp1_microjoules = static_cast<uint64_t>(raw_diff * energy_unit * 1000000.0);
     }
+    uint64_t end_ns = RTC::nanos_now();
+
+    uint32_t therm_end = static_cast<uint32_t>((x86::CPU::read_msr(0x19C) >> 16) & 0x7F); // IA32_THERM_STATUS bits 22:16
+    uint32_t pkg_therm_end = static_cast<uint32_t>((x86::CPU::read_msr(0x1B1) >> 16) & 0x7F); // IA32_PACKAGE_THERM_STATUS bits 22:16
+
+    result.therm_tcc = static_cast<uint8_t>(therm_max);
+    result.therm_start = static_cast<uint8_t>(therm_start);
+    result.therm_end = static_cast<uint8_t>(therm_end);
+    result.pkg_therm_start = static_cast<uint8_t>(pkg_therm_start);
+    result.pkg_therm_end = static_cast<uint8_t>(pkg_therm_end);
+    result.cycles_start = start_cycles;
+    result.cycles_end = end_cycles;
+    result.cycles_elapsed = result.cycles_end - result.cycles_start;
+    result.nanos_elapsed = end_ns - start_ns;
     
     return result;
 }

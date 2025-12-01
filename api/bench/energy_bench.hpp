@@ -31,6 +31,12 @@ namespace energy_bench {
         uint64_t cycles_end = 0;        // CPU cycles at end
         uint64_t cycles_elapsed = 0;    // Total cycles elapsed
         uint64_t nanos_elapsed = 0;     // Total nanoseconds elapsed
+
+        uint8_t therm_start = 0;       // Core thermal offset at start
+        uint8_t therm_end = 0;         // Core thermal offset at end
+        uint8_t therm_tcc = 0;         // Thermal Control Circuit activation temperature
+        uint8_t pkg_therm_start = 0;   // Package thermal offset at start
+        uint8_t pkg_therm_end = 0;     // Package thermal offset at end
         
         // Convenience methods
         double pkg_joules() const { return pkg_microjoules / 1'000'000.0; }
@@ -50,7 +56,7 @@ namespace energy_bench {
     };
     
     // Default: measure PKG and DRAM
-    energy_result bench_function(delegate<void()> func, uint32_t domains = PKG);
+    energy_result bench_function(void (*func)(), uint32_t domains = PKG);
 }
 
 #endif // ENERGY_BENCH_HPP
