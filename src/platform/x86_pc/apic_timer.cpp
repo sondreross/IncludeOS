@@ -20,6 +20,7 @@
 #include "pit.hpp"
 #include <kernel/events.hpp>
 #include <kernel/timers.hpp>
+#include <kernel/rtc.hpp>
 #include <smp>
 #include <cstdio>
 #include <info>
@@ -91,25 +92,68 @@ namespace x86
     // restart counter
     lapic.timer_begin(0xFFFFFFFF);
 
-    /// use PIT to measure <time> in one-shot ///
-    PIT::oneshot(milliseconds(CALIBRATION_MS),
-    [overhead] {
-      uint32_t diff = APIC::get().timer_diff() - overhead;
-      assert(ticks_per_micro == 0);
-      // measure difference
-      ticks_per_micro = diff / CALIBRATION_MS / 1000;
-      // stop APIC timer
-      APIC::get().timer_interrupt(false);
+    // RTC-based calibration fallback (PIT doesn't work on bare metal)
+    INFO("APIC", "Using RTC-based calibration (PIT unavailable)");
+    
+    // Measure APIC ticks over a known time period using RTC
+    uint64_t rtc_start = RTC::nanos_now();
+    uint64_t rtc_target = rtc_start + (CALIBRATION_MS * 1000000ULL);  // Convert ms to nanoseconds
+    
+    // Busy-wait until RTC advances by CALIBRATION_MS milliseconds
+    uint64_t rtc_now;
+    do {
+      asm volatile("pause");
+      rtc_now = RTC::nanos_now();
+    } while (rtc_now < rtc_target);
+    
+    // Read how many APIC ticks elapsed
+    uint32_t apic_elapsed = lapic.timer_diff();
+    uint64_t rtc_elapsed_nanos = rtc_now - rtc_start;
+    
+    // Calculate ticks per microsecond
+    // apic_elapsed ticks in rtc_elapsed_nanos nanoseconds
+    // ticks_per_micro = apic_elapsed / (rtc_elapsed_nanos / 1000)
+    ticks_per_micro = (apic_elapsed * 1000) / rtc_elapsed_nanos;
+    
+    if (ticks_per_micro == 0) {
+      INFO("APIC", "Calibration failed, using fallback ticks_per_micro");
+      ticks_per_micro = 25;  // Fallback
+    }
+    
+    // stop APIC timer
+    APIC::get().timer_interrupt(false);
+    
+    INFO("APIC", "RTC-based calibration");
+    INFO("APIC", "RTC elapsed: %lu ns, APIC elapsed: %u ticks", 
+         (unsigned long)rtc_elapsed_nanos, apic_elapsed);
+    INFO("APIC", "ticks_per_micro: %u", ticks_per_micro);
+    
+    start_timers();
+    
+    // with SMP, signal everyone else too (IRQ 1)
+    if (SMP::cpu_count() > 1) {
+      APIC::get().bcast_ipi(0x21);
+    }
 
-      //printf("* APIC timer: ticks %ums: %u\t 1mi: %u\n",
-      //       CALIBRATION_MS, diff, ticks_per_micro);
-      start_timers();
+    // /// use PIT to measure <time> in one-shot ///
+    // PIT::oneshot(milliseconds(CALIBRATION_MS),
+    // [overhead] {
+    //   uint32_t diff = APIC::get().timer_diff() - overhead;
+    //   assert(ticks_per_micro == 0);
+    //   // measure differences
+    //   ticks_per_micro = diff / CALIBRATION_MS / 1000;
+    //   // stop APIC timer
+    //   APIC::get().timer_interrupt(false);
 
-      // with SMP, signal everyone else too (IRQ 1)
-      if (SMP::cpu_count() > 1) {
-        APIC::get().bcast_ipi(0x21);
-      }
-    });
+    //   printf("* APIC timer: ticks %ums: %u\t 1mi: %u\n",
+    //         CALIBRATION_MS, diff, ticks_per_micro);
+    //   start_timers();
+
+    //   // with SMP, signal everyone else too (IRQ 1)
+    //   if (SMP::cpu_count() > 1) {
+    //     APIC::get().bcast_ipi(0x21);
+    //   }
+    // });
   }
 
   void APIC_Timer::start_timers() noexcept

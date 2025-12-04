@@ -68,7 +68,7 @@ energy_result bench_function(void (*func)(), uint32_t domains)
     uint64_t pkg_before = 0, dram_before = 0, pp0_before = 0, pp1_before = 0;
 
     // Read IA32_TEMPERATURE_TARGET (MSR 0x1A2) — bits 23:16 contain TjMax (temperature target)
-    uint64_t temp_target_msr = x86::CPU::read_msr(0x1A2);
+    uint64_t temp_target_msr = x86::CPU::read_msr(MSR_TEMPERATURE_TARGET);
     uint8_t therm_max = static_cast<uint8_t>((temp_target_msr >> 16) & 0xFF);
     uint32_t therm_start = static_cast<uint32_t>((x86::CPU::read_msr(0x19C) >> 16) & 0x7F); // IA32_THERM_STATUS bits 22:16
     uint32_t pkg_therm_start = static_cast<uint32_t>((x86::CPU::read_msr(0x1B1) >> 16) & 0x7F); // IA32_PACKAGE_THERM_STATUS bits 22:16
