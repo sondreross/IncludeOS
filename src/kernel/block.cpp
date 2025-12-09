@@ -61,6 +61,7 @@ void os::block() noexcept
   Events::get().process_events();
 
   // Await next interrupt
+  // NOTE: os::block() is used widely; keep it minimal and unconditional.
   os::halt();
 
   // Process events (again?)

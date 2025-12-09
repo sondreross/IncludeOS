@@ -53,7 +53,7 @@ namespace energy_bench {
             return (cycles_elapsed * 1000.0) / cpu_mhz;
         }
         
-    };
+    } typedef energy_result_t;
     
     // Default: measure PKG and DRAM
     energy_result bench_function(void (*func)(), uint32_t domains = PKG);

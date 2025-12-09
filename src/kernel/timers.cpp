@@ -8,6 +8,11 @@
 #include <statman>
 #include <map>
 #include <vector>
+#ifndef INCLUDEOS_TIMERS_TRACE
+#define TIMERS_LOG(...) do {} while (0)
+#else
+#define TIMERS_LOG(...) printf(__VA_ARGS__)
+#endif
 
 using namespace std::chrono;
 typedef Timers::duration_t duration_t;
@@ -125,6 +130,10 @@ bool Timers::is_ready()
 void Timers::ready()
 {
   signal_ready = true;
+  auto ts_now = now();
+  TIMERS_LOG("[TIMERS] System ready called at %lld ns, queued timers: %zu\n",
+             (long long)ts_now.count(), get().scheduled.size());
+  
   // begin processing timers if any are queued
   if (get().is_running == false) {
     timers_handler();
@@ -141,7 +150,11 @@ Timers::id_t Timers::periodic(duration_t when, duration_t period, handler_t hand
   assert(handler != nullptr && "Callback function cannot be null");
   auto& system = get();
   Timers::id_t id;
-  auto real_time = now() + when;
+  auto ts_now = now();
+  auto real_time = ts_now + when;
+  
+  TIMERS_LOG("[TIMERS] Creating timer: now=%lld ns, when=%lld ns, period=%lld ns, real_time=%lld ns\n",
+             (long long)ts_now.count(), (long long)when.count(), (long long)period.count(), (long long)real_time.count());
 
   if (UNLIKELY(system.free_timers.empty()))
   {
@@ -232,6 +245,9 @@ void Timers::timers_handler()
   // assume the hardware timer called this function
   system.is_running = false;
 
+    TIMERS_LOG("[TIMER] Handler called on cpu %d, scheduled timers: %zu\n",
+               SMP::cpu_id(), system.scheduled.size());
+
   while (LIKELY(!system.scheduled.empty()))
   {
     auto it         = system.scheduled.begin();
@@ -239,12 +255,24 @@ void Timers::timers_handler()
     Timers::id_t id = it->second;
 
     auto ts_now = now();
+            TIMERS_LOG("[TIMER] Check: cpu=%d when=%lld ns, now=%lld ns, diff=%lld ns\n",
+                   SMP::cpu_id(), (long long)when.count(), (long long)ts_now.count(), (long long)(when.count() - ts_now.count()));
     if (ts_now >= when) {
+      auto lateness = ts_now - when;
+      if (UNLIKELY(lateness > std::chrono::milliseconds(1))) {
+        TIMERS_LOG("[TIMER] LATE by %lld ns for timer %d\n", (long long)lateness.count(), id);
+      }
+      // Note: delegate doesn't expose the target; use address of the delegate object for traceability
+      TIMERS_LOG("[TIMER] Firing timer %d (cb_obj=%p)\n", id, (void*)&system.timers[id].callback);
       // erase immediately
       system.scheduled.erase(it);
 
       // call the users callback function
+      auto before_cb = now();
       system.timers[id].callback(id);
+      auto after_cb = now();
+
+      TIMERS_LOG("[TIMER] Timer %d callback took %lld ns\n", id, (long long)(after_cb - before_cb).count());
       // if the timers struct was modified in callback, eg. due to
       // creating a timer, then the timer reference below would have
       // been invalidated, hence why its BELOW, AND MUST STAY THERE
@@ -263,6 +291,7 @@ void Timers::timers_handler()
         // update timers self-time
         timer.time = new_time;
         // reschedule
+        TIMERS_LOG("[TIMER] Reschedule periodic %d to %lld\n", id, (long long)new_time.count());
         system.scheduled.
           emplace(std::piecewise_construct,
                   std::forward_as_tuple(new_time),
@@ -272,7 +301,10 @@ void Timers::timers_handler()
     } else {
       // not yet time, so schedule it for later
       system.is_running = true;
-      system.arch_start_func(when - ts_now);
+      auto remaining = when - ts_now;
+      TIMERS_LOG("[TIMER] Schedule: when=%lld ns, now=%lld ns, remaining=%lld ns\n",
+             (long long)when.count(), (long long)ts_now.count(), (long long)remaining.count());
+      system.arch_start_func(remaining);
       // exit early, because we have nothing more to do,
       // and there is a deferred handler
       return;
@@ -280,6 +312,7 @@ void Timers::timers_handler()
   }
   // stop hardware timer, since no timers are enabled
   system.arch_stop_func();
+  TIMERS_LOG("[TIMER] Stopped hardware timer (no scheduled timers)\n");
 }
 void timer_system::sched_timer(duration_t when, Timers::id_t id)
 {
