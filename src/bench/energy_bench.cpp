@@ -46,11 +46,11 @@ double get_rapl_units() {
 uint64_t bench_function_single(delegate<void()> func) 
 {
     double energy_unit = get_rapl_units();
-    uint64_t raw_before = x86::CPU::read_msr(MSR_PKG_ENERGY_STATUS);
+    uint32_t raw_before = x86::CPU::read_msr(MSR_PKG_ENERGY_STATUS) & 0xFFFFFFFF;
 
     func();
 
-    uint64_t raw_after = x86::CPU::read_msr(MSR_PKG_ENERGY_STATUS);
+    uint32_t raw_after = x86::CPU::read_msr(MSR_PKG_ENERGY_STATUS) & 0xFFFFFFFF;
     
     // Calculate difference first, then convert to microjoules
     uint64_t raw_diff = raw_after - raw_before;
@@ -64,8 +64,8 @@ energy_result bench_function(void (*func)(), uint32_t domains)
     double energy_unit = get_rapl_units();
     energy_result result;
     
-    // Store raw "before" values
-    uint64_t pkg_before = 0, dram_before = 0, pp0_before = 0, pp1_before = 0;
+    // Store raw "before" values (lower 32 bits only; upper 32 are reserved)
+    uint32_t pkg_before = 0, dram_before = 0, pp0_before = 0, pp1_before = 0;
 
     // Read IA32_TEMPERATURE_TARGET (MSR 0x1A2) — bits 23:16 contain TjMax (temperature target)
     uint64_t temp_target_msr = x86::CPU::read_msr(MSR_TEMPERATURE_TARGET);
@@ -74,19 +74,19 @@ energy_result bench_function(void (*func)(), uint32_t domains)
     uint32_t pkg_therm_start = static_cast<uint32_t>((x86::CPU::read_msr(0x1B1) >> 16) & 0x7F); // IA32_PACKAGE_THERM_STATUS bits 22:16
     uint64_t start_ns = RTC::nanos_now();
     if (domains & PKG) {
-        pkg_before = x86::CPU::read_msr(MSR_PKG_ENERGY_STATUS);
+        pkg_before = x86::CPU::read_msr(MSR_PKG_ENERGY_STATUS) & 0xFFFFFFFF;
         result.measured_domains |= PKG;
     }
     if (domains & DRAM) {
-        dram_before = x86::CPU::read_msr(MSR_DRAM_ENERGY_STATUS);
+        dram_before = x86::CPU::read_msr(MSR_DRAM_ENERGY_STATUS) & 0xFFFFFFFF;
         result.measured_domains |= DRAM;
     }
     if (domains & PP0) {
-        pp0_before = x86::CPU::read_msr(MSR_PP0_ENERGY_STATUS);
+        pp0_before = x86::CPU::read_msr(MSR_PP0_ENERGY_STATUS) & 0xFFFFFFFF;
         result.measured_domains |= PP0;
     }
     if (domains & PP1) {
-        pp1_before = x86::CPU::read_msr(MSR_PP1_ENERGY_STATUS);
+        pp1_before = x86::CPU::read_msr(MSR_PP1_ENERGY_STATUS) & 0xFFFFFFFF;
         result.measured_domains |= PP1;
     }
     
@@ -101,23 +101,23 @@ energy_result bench_function(void (*func)(), uint32_t domains)
     
     // Calculate differences and convert to microjoules
     if (domains & PKG) {
-        uint64_t pkg_after = x86::CPU::read_msr(MSR_PKG_ENERGY_STATUS);
-        uint64_t raw_diff = pkg_after - pkg_before;
+        uint32_t pkg_after = x86::CPU::read_msr(MSR_PKG_ENERGY_STATUS) & 0xFFFFFFFF;
+        uint32_t raw_diff = pkg_after - pkg_before;
         result.pkg_microjoules = static_cast<uint64_t>(raw_diff * energy_unit * 1000000.0);
     }
     if (domains & DRAM) {
-        uint64_t dram_after = x86::CPU::read_msr(MSR_DRAM_ENERGY_STATUS);
-        uint64_t raw_diff = dram_after - dram_before;
+        uint32_t dram_after = x86::CPU::read_msr(MSR_DRAM_ENERGY_STATUS) & 0xFFFFFFFF;
+        uint32_t raw_diff = dram_after - dram_before;
         result.dram_microjoules = static_cast<uint64_t>(raw_diff * energy_unit * 1000000.0);
     }
     if (domains & PP0) {
-        uint64_t pp0_after = x86::CPU::read_msr(MSR_PP0_ENERGY_STATUS);
-        uint64_t raw_diff = pp0_after - pp0_before;
+        uint32_t pp0_after = x86::CPU::read_msr(MSR_PP0_ENERGY_STATUS) & 0xFFFFFFFF;
+        uint32_t raw_diff = pp0_after - pp0_before;
         result.pp0_microjoules = static_cast<uint64_t>(raw_diff * energy_unit * 1000000.0);
     }
     if (domains & PP1) {
-        uint64_t pp1_after = x86::CPU::read_msr(MSR_PP1_ENERGY_STATUS);
-        uint64_t raw_diff = pp1_after - pp1_before;
+        uint32_t pp1_after = x86::CPU::read_msr(MSR_PP1_ENERGY_STATUS) & 0xFFFFFFFF;
+        uint32_t raw_diff = pp1_after - pp1_before;
         result.pp1_microjoules = static_cast<uint64_t>(raw_diff * energy_unit * 1000000.0);
     }
     uint64_t end_ns = RTC::nanos_now();
